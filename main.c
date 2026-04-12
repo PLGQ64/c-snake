@@ -176,12 +176,12 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
 
   if (cobra->y == 0 || cobra->y == ALTURA - 1 || cobra->x == 0 ||
       cobra->x == LARGURA - 1) {
-    *estado = MENU;
+    *estado = SAIR;
   }
 
   for (int k = 0; k < cobra->tamanho; k++) {
     if (cobra->x == cobra->cauda[k].x && cobra->y == cobra->cauda[k].y) {
-      *estado = MENU;
+      *estado = SAIR;
     }
   }
 }
