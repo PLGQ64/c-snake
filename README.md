@@ -1,5 +1,8 @@
 # c-snake
-Rodrigo Isaac
-Pedro Lucas Queiroz
-Luiz Henrique
-Rafael david
+Rodrigo Isaac  
+
+Pedro Lucas Queiroz  
+
+Luiz Henrique  
+
+Rafael david  
