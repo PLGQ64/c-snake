@@ -6,8 +6,8 @@
 #include <string.h>
 #include <time.h>
 
-#define ALTURA 21
-#define LARGURA 21
+#define ALTURA 32
+#define LARGURA 48
 #define TILE 20
 
 typedef enum { CIMA, BAIXO, ESQUERDA, DIREITA } Direcao;
@@ -63,7 +63,7 @@ int main(void) {
   al_start_timer(timer);
 
   // Cria a janela do jogo (Display)
-  ALLEGRO_DISPLAY *display = al_create_display(420, 420);
+  ALLEGRO_DISPLAY *display = al_create_display(960, 640);
   srand(time(0));
 
   // Cria a fila de eventos
@@ -75,7 +75,7 @@ int main(void) {
 
   // inicializacao de alguns valores
   int **mapa = (int **)calloc(ALTURA, sizeof(int *));
-  for (int i = 0; i < LARGURA; i++) {
+  for (int i = 0; i < ALTURA; i++) {
     mapa[i] = (int *)calloc(LARGURA, sizeof(int));
   }
 
@@ -159,7 +159,7 @@ int main(void) {
       draw = true;
     }
   }
-  for (int i = 0; i < LARGURA; i++) {
+  for (int i = 0; i < ALTURA; i++) {
     free(mapa[i]);
   }
   free(mapa);
