@@ -32,22 +32,31 @@ typedef struct {
   int pontos;
 } Maca;
 
-// typedef struct {
-//   int x, y;
-//   int largura, altura;
-//   ALLEGRO_COLOR cor;
-//   char texto[32];
-// } Botao;
+typedef struct {
+  int x, y;
+  int largura, altura;
+  ALLEGRO_COLOR cor;
+  char texto[32];
+  Estado estado;
+} Botao;
 
-void inicializar(Cabeca *cobra, Maca *maca);
+void inicializar(Cabeca *cobra, Maca *maca, Direcao *dir);
 void desenhar(int **mapa);
 void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir);
 void preencherMapa(Cabeca *cobra, Maca *maca, int **mapa);
+void desenharBotao(Botao *botao, ALLEGRO_FONT *fonte);
+bool clickBotao(Botao botao, int mouse_x, int mouse_y);
+void desenharPontuacao(Cabeca *c, ALLEGRO_FONT *fonte);
 
 int main(void) {
   al_init();                  // Liga o Allegro
   al_install_keyboard();      // Liga o suporte ao teclado
   al_init_primitives_addon(); // Liga o módulo de formas geométricas
+  al_init_font_addon();
+  al_init_ttf_addon();
+  al_install_mouse();
+
+  ALLEGRO_FONT *fonte = al_create_builtin_font();
 
   // Define o fps que o jogo roda-ra
   ALLEGRO_TIMER *timer = al_create_timer(1.0 / 10.0); // 10 FPS
@@ -74,26 +83,49 @@ int main(void) {
   Cabeca cobra;
   Direcao ndirecao = 0;
   Estado estado = MENU;
+  bool waitlogic = 0;
 
-  // Botao b_jogar;
-  // b_jogar.x = 3;
-  // b_jogar.y = 10;
-  // b_jogar.altura = 3;
-  // b_jogar.largura = 6;
-  // b_jogar.cor = al_map_rgb(100, 150, 0);
-  // strco
+  Botao b_jogar;
+  b_jogar.x = 3;
+  b_jogar.y = 10;
+  b_jogar.altura = 3;
+  b_jogar.largura = 6;
+  b_jogar.cor = al_map_rgb(100, 150, 0);
+  strcpy(b_jogar.texto, "Jogar");
+  b_jogar.estado = JOGO;
 
-  inicializar(&cobra, &maca);
+  Botao b_sair;
+  b_sair.x = 3;
+  b_sair.y = 16;
+  b_sair.altura = 3;
+  b_sair.largura = 6;
+  b_sair.cor = al_map_rgb(100, 0, 0);
+  strcpy(b_sair.texto, "Sair");
+  b_sair.estado = SAIR;
+
+  bool draw = true;
+
+  inicializar(&cobra, &maca, &ndirecao);
 
   while (estado != SAIR) {
     ALLEGRO_EVENT evento;
     al_wait_for_event(fila_eventos, &evento);
 
-    // if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
-    //
-    // }
+    if (estado == MENU) {
+      inicializar(&cobra, &maca, &ndirecao);
+    }
 
-    if (evento.type == ALLEGRO_EVENT_KEY_DOWN) {
+    if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
+      int mx = evento.mouse.x;
+      int my = evento.mouse.y;
+      if (clickBotao(b_jogar, mx, my)) {
+        estado = JOGO;
+      } else if (clickBotao(b_sair, mx, my)) {
+        estado = SAIR;
+      }
+    }
+
+    if (evento.type == ALLEGRO_EVENT_KEY_DOWN && waitlogic == 1) {
       if (evento.keyboard.keycode == ALLEGRO_KEY_UP && ndirecao != BAIXO) {
         ndirecao = CIMA;
       } else if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN &&
@@ -106,15 +138,27 @@ int main(void) {
                  ndirecao != ESQUERDA) {
         ndirecao = DIREITA;
       }
+      waitlogic = 0;
     }
 
     if (evento.type == ALLEGRO_EVENT_TIMER) {
-      logica(&cobra, &maca, &estado, &ndirecao);
-      preencherMapa(&cobra, &maca, mapa);
-      desenhar(mapa);
+      if (estado == JOGO) {
+        logica(&cobra, &maca, &estado, &ndirecao);
+        preencherMapa(&cobra, &maca, mapa);
+        desenhar(mapa);
+        desenharPontuacao(&cobra, fonte);
+        al_flip_display();
+        waitlogic = 1;
+      } else {
+        al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpa a tela do Allegro
+        desenharBotao(&b_jogar, fonte);
+        desenharBotao(&b_sair, fonte);
+        al_flip_display();
+      }
+
+      draw = true;
     }
   }
-
   for (int i = 0; i < LARGURA; i++) {
     free(mapa[i]);
   }
@@ -176,14 +220,39 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
 
   if (cobra->y == 0 || cobra->y == ALTURA - 1 || cobra->x == 0 ||
       cobra->x == LARGURA - 1) {
-    *estado = SAIR;
+    *estado = MENU;
   }
 
   for (int k = 0; k < cobra->tamanho; k++) {
     if (cobra->x == cobra->cauda[k].x && cobra->y == cobra->cauda[k].y) {
-      *estado = SAIR;
+      *estado = MENU;
     }
   }
+}
+
+void desenharPontuacao(Cabeca *c, ALLEGRO_FONT *fonte) {
+  al_draw_textf(fonte, al_map_rgb(255, 255, 255), (1 * TILE) / 2 - 5,
+                (1 * TILE) / 2 - 5, 0, "%d", c->pontuacao);
+}
+
+bool clickBotao(Botao botao, int mouse_x, int mouse_y) {
+  if (mouse_x >= botao.x * TILE &&
+      mouse_x <= (botao.x * TILE + botao.largura * TILE) &&
+      mouse_y >= botao.y * TILE &&
+      mouse_y <= (botao.y * TILE + botao.altura * TILE)) {
+    return true; // Sucesso!
+  }
+  return false; // Clique fora do botão
+}
+
+void desenharBotao(Botao *botao, ALLEGRO_FONT *fonte) {
+  al_draw_filled_rectangle(botao->x * TILE, botao->y * TILE,
+                           botao->x * TILE + botao->largura * TILE,
+                           botao->y * TILE + botao->altura * TILE, botao->cor);
+  al_draw_text(fonte, al_map_rgb(255, 255, 255),
+               botao->x * TILE + (botao->largura * TILE / 2),
+               botao->y * TILE + (botao->altura * TILE / 2),
+               ALLEGRO_ALIGN_CENTRE, botao->texto);
 }
 
 void desenhar(int **mapa) {
@@ -212,7 +281,6 @@ void desenhar(int **mapa) {
       }
     }
   }
-  al_flip_display();
 }
 
 void preencherMapa(Cabeca *cobra, Maca *maca, int **mapa) {
@@ -243,8 +311,9 @@ void preencherMapa(Cabeca *cobra, Maca *maca, int **mapa) {
   }
 }
 
-void inicializar(Cabeca *cobra, Maca *maca) {
+void inicializar(Cabeca *cobra, Maca *maca, Direcao *dir) {
   // 1. Configuração da Cabeça
+  *dir = ESQUERDA;
   cobra->x = LARGURA / 2;
   cobra->y = ALTURA / 2;
   cobra->pontuacao = 0;
