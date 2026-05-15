@@ -183,6 +183,15 @@ void salvar_pontuacao(Cabeca *c[]) {
   //aqui vai ser a funçao que rodrigo vai fazer
 }
 
+void apagar_pontuacao(int p, int *board) {
+  for (int i = 0; i < 5; i++) {
+    if (i == p) {
+      board[i] = 0;
+    }
+  }
+  // chamar funcao de salvar
+}
+
 void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
 
   // i começa no último gomo (tamanho - 1)
