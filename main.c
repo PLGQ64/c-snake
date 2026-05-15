@@ -2,13 +2,14 @@
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_ttf.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#define ALTURA 32
-#define LARGURA 48
-#define TILE 20
+#define ALTURA 24
+#define LARGURA 24
+#define TILE 40
 
 typedef enum { CIMA, BAIXO, ESQUERDA, DIREITA } Direcao;
 typedef enum { MENU, JOGO, SAIR } Estado;
@@ -63,15 +64,16 @@ int main(void) {
   al_start_timer(timer);
 
   // Cria a janela do jogo (Display)
-  ALLEGRO_DISPLAY *display = al_create_display(960, 640);
+  ALLEGRO_DISPLAY *display = al_create_display(LARGURA * TILE, ALTURA * TILE);
   srand(time(0));
 
   // Cria a fila de eventos
   ALLEGRO_EVENT_QUEUE *fila_eventos = al_create_event_queue();
-  al_register_event_source(fila_eventos, al_get_keyboard_event_source());
-  al_register_event_source(fila_eventos, al_get_timer_event_source(timer));
-  al_register_event_source(fila_eventos, al_get_display_event_source(display));
-  al_register_event_source(fila_eventos, al_get_mouse_event_source());
+  // de onde os eventos da lista vem ou o que ela deve escutar
+  al_register_event_source(fila_eventos, al_get_keyboard_event_source()); // teclado
+  al_register_event_source(fila_eventos, al_get_timer_event_source(timer)); // timer
+  al_register_event_source(fila_eventos, al_get_display_event_source(display)); // monitor
+  al_register_event_source(fila_eventos, al_get_mouse_event_source()); // mouse
 
   // inicializacao de alguns valores
   int **mapa = (int **)calloc(ALTURA, sizeof(int *));
@@ -81,9 +83,10 @@ int main(void) {
 
   Maca maca;
   Cabeca cobra;
-  Direcao ndirecao = 0;
+  Direcao ndirecao = ESQUERDA;
   Estado estado = MENU;
-  bool waitlogic = 0;
+  bool flag_waitlogic = false;
+  bool flag_inicializada = false;
 
   Botao b_jogar;
   b_jogar.x = 3;
@@ -103,18 +106,15 @@ int main(void) {
   strcpy(b_sair.texto, "Sair");
   b_sair.estado = SAIR;
 
-  bool draw = true;
+  // bool draw = true;
 
-  inicializar(&cobra, &maca, &ndirecao);
-
+  // loop principal
   while (estado != SAIR) {
+    // para aonde os eventos vao ser enviados
     ALLEGRO_EVENT evento;
     al_wait_for_event(fila_eventos, &evento);
 
-    if (estado == MENU) {
-      inicializar(&cobra, &maca, &ndirecao);
-    }
-
+    // verifica se a pessoa apertou dentro do botao
     if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
       int mx = evento.mouse.x;
       int my = evento.mouse.y;
@@ -125,7 +125,8 @@ int main(void) {
       }
     }
 
-    if (evento.type == ALLEGRO_EVENT_KEY_DOWN && waitlogic == 1) {
+    // verifica a tecla de direcao apertada
+    if (evento.type == ALLEGRO_EVENT_KEY_DOWN && flag_waitlogic == true) {
       if (evento.keyboard.keycode == ALLEGRO_KEY_UP && ndirecao != BAIXO) {
         ndirecao = CIMA;
       } else if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN &&
@@ -138,25 +139,30 @@ int main(void) {
                  ndirecao != ESQUERDA) {
         ndirecao = DIREITA;
       }
-      waitlogic = 0;
+      flag_waitlogic = false;
     }
 
     if (evento.type == ALLEGRO_EVENT_TIMER) {
       if (estado == JOGO) {
+        if (flag_inicializada == false) {
+          inicializar(&cobra, &maca, &ndirecao);
+          flag_inicializada = true;
+        }
         logica(&cobra, &maca, &estado, &ndirecao);
         preencherMapa(&cobra, &maca, mapa);
         desenhar(mapa);
         desenharPontuacao(&cobra, fonte);
         al_flip_display();
-        waitlogic = 1;
+        flag_waitlogic = true;
       } else {
         al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpa a tela do Allegro
         desenharBotao(&b_jogar, fonte);
         desenharBotao(&b_sair, fonte);
         al_flip_display();
+        flag_inicializada = false;
       }
 
-      draw = true;
+      // draw = true;
     }
   }
   for (int i = 0; i < ALTURA; i++) {
@@ -168,6 +174,14 @@ int main(void) {
   return 0;
 }
 
+void salvar_pontuacao(Cabeca *c) {
+  int *file = fopen("pontuacao.dat", "r");
+  if ( file == NULL) {
+    fopen("pontuacao.dat", "w");
+  }
+
+}
+
 void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
 
   // i começa no último gomo (tamanho - 1)
@@ -177,10 +191,12 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
     cobra->cauda[i].y = cobra->cauda[i - 1].y;
   }
 
-  // Depois que todos "andaram" para a frente, o gomo zero pega a cabeça
+  // Depois que todos os gomos "andaram" para a frente, o gomo zero pega a mesma
+  // posicao da cabeça
   cobra->cauda[0].x = cobra->x;
   cobra->cauda[0].y = cobra->y;
 
+  // move a cameça
   if (*dir == CIMA) {
     cobra->y -= 1;
   } else if (*dir == BAIXO) {
@@ -191,38 +207,47 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
     cobra->x += 1;
   }
 
+  // verifica se a cabeça pegou a maça
   if (cobra->x == maca->x && cobra->y == maca->y) {
+    // aumenta o tamanho
     cobra->tamanho += 1;
+    // aumenta o pontuacao
     cobra->pontuacao += maca->pontos;
 
+    // aumenta o tamanho do corpo da cobra
     cobra->cauda = realloc(cobra->cauda, cobra->tamanho * sizeof(Corpo));
+    // inicializa o novo gomo com a mesma posicao do ultimo gomo
     cobra->cauda[cobra->tamanho - 1] = cobra->cauda[cobra->tamanho - 2];
 
     // Altera a posicao da maca
-    int visivel;
+    bool visivel;
     do {
-      visivel = 1;
+      visivel = true;
       maca->x = rand() % (LARGURA - 2) + 1;
       maca->y = rand() % (ALTURA - 2) + 1;
 
       // verifica se a maca nao apareceu na cabeça
       if (cobra->x == maca->x && cobra->y == maca->y) {
-        visivel = 0;
+        visivel = false;
+        continue;
       }
       // ou dentro do corpo
-      for (int i = 0; i < cobra->tamanho; i++) {
+      for (int i = false; i < cobra->tamanho; i++) {
         if (cobra->cauda[i].x == maca->x && cobra->cauda[i].y == maca->y) {
-          visivel = 0;
+          visivel = false;
+          continue;
         }
       }
-    } while (visivel == 0);
+    } while (visivel == false);
   }
 
+  // verifica se a cobra bateu em uma parede
   if (cobra->y == 0 || cobra->y == ALTURA - 1 || cobra->x == 0 ||
       cobra->x == LARGURA - 1) {
     *estado = MENU;
   }
 
+  // verifica se a cobra bateu no proprio corpo
   for (int k = 0; k < cobra->tamanho; k++) {
     if (cobra->x == cobra->cauda[k].x && cobra->y == cobra->cauda[k].y) {
       *estado = MENU;
@@ -246,9 +271,7 @@ bool clickBotao(Botao botao, int mouse_x, int mouse_y) {
 }
 
 void desenharBotao(Botao *botao, ALLEGRO_FONT *fonte) {
-  al_draw_filled_rectangle(botao->x * TILE, botao->y * TILE,
-                           botao->x * TILE + botao->largura * TILE,
-                           botao->y * TILE + botao->altura * TILE, botao->cor);
+  al_draw_filled_rectangle(botao->x * TILE, botao->y * TILE, botao->x * TILE + botao->largura * TILE, botao->y * TILE + botao->altura * TILE, botao->cor);
   al_draw_text(fonte, al_map_rgb(255, 255, 255),
                botao->x * TILE + (botao->largura * TILE / 2),
                botao->y * TILE + (botao->altura * TILE / 2),
@@ -267,14 +290,21 @@ void desenhar(int **mapa) {
       int x2 = x1 + TILE;
       int y2 = y1 + TILE;
 
+      // deixa um espaco para separar a cabeca e o da maca deixa ela menor
+      int espacamento_gomo = (TILE * 31 / 32);
+      int espacamento_maca = (TILE * 31 / 32);
+
       if (mapa[y][x] == 1) { // Cabeça
-        al_draw_filled_rectangle(x1 + 1, y1 + 1, x2 - 1, y2 - 1,
+        al_draw_filled_rectangle(x1 + espacamento_gomo, y1 + espacamento_gomo,
+                                 x2 - espacamento_gomo, y2 - espacamento_gomo,
                                  al_map_rgb(0, 150, 0));
       } else if (mapa[y][x] == 2) { // Cauda
-        al_draw_filled_rectangle(x1 + 1, y1 + 1, x2 - 1, y2 - 1,
+        al_draw_filled_rectangle(x1 + espacamento_gomo, y1 + espacamento_gomo,
+                                 x2 - espacamento_gomo, y2 - espacamento_gomo,
                                  al_map_rgb(0, 255, 0));
       } else if (mapa[y][x] == 3) { // Maçã
-        al_draw_filled_rectangle(x1 + 3, y1 + 3, x2 - 3, y2 - 3,
+        al_draw_filled_rectangle(x1 + espacamento_maca, y1 + espacamento_maca,
+                                 x2 - espacamento_maca, y2 - espacamento_maca,
                                  al_map_rgb(255, 0, 0));
       } else if (mapa[y][x] == 4) { // Parede
         al_draw_filled_rectangle(x1, y1, x2, y2, al_map_rgb(200, 200, 0));
