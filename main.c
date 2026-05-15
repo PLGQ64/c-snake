@@ -174,14 +174,28 @@ int main(void) {
   return 0;
 }
 
-void salvar_pontuacao(Cabeca *c[]) {
-  int *file = fopen("pontuacao.dat", "rb");
+void salvar_pontuacao(int board[5]) {
+  FILE *file = fopen("pontuacao.dat", "wb");//esse arquivo tem que ser aberto para leitura
+  
   if ( file == NULL) {
-    fopen("pontuacao.dat", "wb");
     fclose(file);
+   *file= fopen("pontuacao.dat","wb");
+   fclose(file);
+    FILE
   }
+    
+    fread(board,sizeof(int),5,file);
+  
+    fclose(file);
+  
   //aqui vai ser a funçao que rodrigo vai fazer
+   
+    *file2=fopen("pontuacao.dat","wb");//esse arquivo precisa ser aberto para escrita
+
+    fwrite(board,sizeof(int),5,file2);
+    fclose(file2);
 }
+
 
 void apagar_pontuacao(int p, int *board) {
   for (int i = 0; i < 5; i++) {
