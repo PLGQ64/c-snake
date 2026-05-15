@@ -38,7 +38,6 @@ typedef struct {
   int largura, altura;
   ALLEGRO_COLOR cor;
   char texto[32];
-  Estado estado;
 } Botao;
 
 void inicializar(Cabeca *cobra, Maca *maca, Direcao *dir);
@@ -90,21 +89,28 @@ int main(void) {
 
   Botao b_jogar;
   b_jogar.x = 3;
-  b_jogar.y = 10;
+  b_jogar.y = 4;
   b_jogar.altura = 3;
   b_jogar.largura = 6;
   b_jogar.cor = al_map_rgb(100, 150, 0);
   strcpy(b_jogar.texto, "Jogar");
-  b_jogar.estado = JOGO;
+
 
   Botao b_sair;
   b_sair.x = 3;
-  b_sair.y = 16;
+  b_sair.y = 6;
   b_sair.altura = 3;
   b_sair.largura = 6;
   b_sair.cor = al_map_rgb(100, 0, 0);
   strcpy(b_sair.texto, "Sair");
-  b_sair.estado = SAIR;
+
+  Botao b_apagar_pontuacao;
+  b_apagar_pontuacao.x = 3;
+  b_apagar_pontuacao.y = 6;
+  b_apagar_pontuacao.altura = 3;
+  b_apagar_pontuacao.largura = 6;
+  b_sair.cor = al_map_rgb(200, 200, 0);
+  strcpy(b_sair.texto, "Apagar pontuacao");
 
   // bool draw = true;
 
