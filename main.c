@@ -175,9 +175,9 @@ int main(void) {
 }
 
 void salvar_pontuacao(Cabeca *c[]) {
-  int *file = fopen("pontuacao.dat", "r");
+  int *file = fopen("pontuacao.dat", "rb");
   if ( file == NULL) {
-    fopen("pontuacao.dat", "w");
+    fopen("pontuacao.dat", "wb");
     fclose(file);
   }
   //aqui vai ser a funçao que rodrigo vai fazer
