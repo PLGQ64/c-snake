@@ -185,7 +185,7 @@ int main(void) {
 }
 
 void salvar_pontuacao(int board[5]) {
-  FILE *file = fopen("pontuacao.dat", "wb");//esse arquivo tem que ser aberto para leitura
+  FILE *file = fopen("pontuacao.dat", "rb");//esse arquivo tem que ser aberto para leitura
 
   if ( file == NULL) {
     fclose(file);
