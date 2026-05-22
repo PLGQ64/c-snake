@@ -187,7 +187,6 @@ void salvar_pontuacao(int board[5]) {
     fclose(file);
    file = fopen("pontuacao.dat","wb");
    fclose(file);
-    FILE
   }
 
     fread(board,sizeof(int),5,file);
@@ -210,6 +209,7 @@ void apagar_pontuacao(int p, int *board) {
     }
   }
   // chamar funcao de salvar
+  // teste de commmit 2
 }
 
 void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
