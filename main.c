@@ -213,7 +213,7 @@ void apagar_pontuacao(int p, int *board) {
     }
   }
   // chamar funcao de salvar
-  // teste de commmit 2
+  // teste de commmit 2!
 }
 
 void ordenar_vetor(int nova_pontuacao, int *board) {
