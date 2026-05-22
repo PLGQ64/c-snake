@@ -2,6 +2,8 @@
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_ttf.h>
+#include <allegro5/keycodes.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -98,23 +100,24 @@ int main(void) {
 
   Botao b_sair;
   b_sair.x = 3;
-  b_sair.y = 6;
+  b_sair.y = 8;
   b_sair.altura = 3;
   b_sair.largura = 6;
-  b_sair.cor = al_map_rgb(100, 0, 0);
+  b_sair.cor = al_map_rgb(120, 0, 0);
   strcpy(b_sair.texto, "Sair");
 
   Botao b_apagar_pontuacao;
   b_apagar_pontuacao.x = 3;
-  b_apagar_pontuacao.y = 6;
+  b_apagar_pontuacao.y = 12;
   b_apagar_pontuacao.altura = 3;
   b_apagar_pontuacao.largura = 6;
-  b_sair.cor = al_map_rgb(200, 200, 0);
-  strcpy(b_sair.texto, "Apagar pontuacao");
+  b_apagar_pontuacao.cor = al_map_rgb(180, 180, 0);
+  strcpy(b_apagar_pontuacao.texto, "Apagar pontuacao");
 
   // bool draw = true;
 
   // loop principal
+  inicializar(&cobra, &maca, &ndirecao);
   while (estado != SAIR) {
     // para aonde os eventos vao ser enviados
     ALLEGRO_EVENT evento;
@@ -164,6 +167,7 @@ int main(void) {
         al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpa a tela do Allegro
         desenharBotao(&b_jogar, fonte);
         desenharBotao(&b_sair, fonte);
+        desenharBotao(&b_apagar_pontuacao, fonte);
         al_flip_display();
         flag_inicializada = false;
       }
@@ -210,6 +214,24 @@ void apagar_pontuacao(int p, int *board) {
   }
   // chamar funcao de salvar
   // teste de commmit 2
+}
+
+void ordenar_vetor(int nova_pontuacao, int *board) {
+  if (nova_pontuacao != 0) {
+    board[5] = nova_pontuacao;
+  }
+  bool modificou = true;
+  for (int i = 0; i < 5 && modificou == true; i++) {
+    modificou = false;
+    for (int k = 0; k < 5; k++){
+      if (board[k] < board[k + 1]) {
+        int temp = board[k + 1];
+        board[k + 1] = board[k];
+        board[k] = temp;
+        modificou = true;
+      }
+    }
+  }
 }
 
 void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
@@ -322,7 +344,7 @@ void desenhar(int **mapa) {
 
       // deixa um espaco para separar a cabeca e o da maca deixa ela menor
       int espacamento_gomo = (TILE * 31 / 32);
-      int espacamento_maca = (TILE * 31 / 32);
+      int espacamento_maca = (TILE * 6 / 32);
 
       if (mapa[y][x] == 1) { // Cabeça
         al_draw_filled_rectangle(x1 + espacamento_gomo, y1 + espacamento_gomo,
