@@ -9,18 +9,22 @@
 #include <string.h>
 #include <time.h>
 
+// Definições de tamanho do tabuleiro e dos blocos (pixels)
 #define ALTURA 24
 #define LARGURA 24
 #define TILE 40
 
+// Enums para organizar as direções e as telas (estados) do jogo
 typedef enum { CIMA, BAIXO, ESQUERDA, DIREITA } Direcao;
 typedef enum { MENU, JOGO, SAIR } Estado;
 
+// Struct para cada segmento (gomo) do corpo da cobra
 typedef struct {
   int x;
   int y;
 } Corpo;
 
+// Struct que controla a cabeça, pontuação e o ponteiro para o corpo
 typedef struct {
   int x;
   int y;
@@ -29,12 +33,14 @@ typedef struct {
   Corpo *cauda;
 } Cabeca;
 
+// Struct para a posição e valor de pontos da maçã
 typedef struct {
   int x;
   int y;
   int pontos;
 } Maca;
 
+// Struct para renderização e detecção de cliques em botões
 typedef struct {
   int x, y;
   int largura, altura;
@@ -42,6 +48,7 @@ typedef struct {
   char texto[32];
 } Botao;
 
+// Funções do jogo
 void inicializar(Cabeca *cobra, Maca *maca, Direcao *dir);
 void desenhar(int **mapa);
 void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir);
@@ -54,14 +61,14 @@ int main(void) {
   al_init();                  // Liga o Allegro
   al_install_keyboard();      // Liga o suporte ao teclado
   al_init_primitives_addon(); // Liga o módulo de formas geométricas
-  al_init_font_addon();
-  al_init_ttf_addon();
-  al_install_mouse();
+  al_init_font_addon();       // Liga o módulo de fontes básicas
+  al_init_ttf_addon();        // Liga o suporte a fontes TTF
+  al_install_mouse();         // Liga o suporte ao mouse
 
-  ALLEGRO_FONT *fonte = al_create_builtin_font();
+  ALLEGRO_FONT *fonte = al_create_builtin_font(); // Cria a fonte padrão do Allegro
 
-  // Define o fps que o jogo roda-ra
-  ALLEGRO_TIMER *timer = al_create_timer(1.0 / 10.0); // 10 FPS
+  // Define o fps que o jogo roda-ra (10 fps)
+  ALLEGRO_TIMER *timer = al_create_timer(1.0 / 10.0); 
   al_start_timer(timer);
 
   // Cria a janela do jogo (Display)
@@ -76,19 +83,21 @@ int main(void) {
   al_register_event_source(fila_eventos, al_get_display_event_source(display)); // monitor
   al_register_event_source(fila_eventos, al_get_mouse_event_source()); // mouse
 
-  // inicializacao de alguns valores
+  // Alocação dinâmica da matriz bidimensional do mapa
   int **mapa = (int **)calloc(ALTURA, sizeof(int *));
   for (int i = 0; i < ALTURA; i++) {
     mapa[i] = (int *)calloc(LARGURA, sizeof(int));
   }
 
+  // Declaração das variáveis de estado e controle do jogo
   Maca maca;
   Cabeca cobra;
   Direcao ndirecao = ESQUERDA;
   Estado estado = MENU;
-  bool flag_waitlogic = false;
+  bool flag_waitlogic = false; // Evita que o jogador mude de direção duas vezes no mesmo frame
   bool flag_inicializada = false;
 
+  // Configuração visual e de posicionamento do Botão "Jogar"
   Botao b_jogar;
   b_jogar.x = 3;
   b_jogar.y = 4;
@@ -97,7 +106,7 @@ int main(void) {
   b_jogar.cor = al_map_rgb(100, 150, 0);
   strcpy(b_jogar.texto, "Jogar");
 
-
+  // Configuração visual e de posicionamento do Botão "Sair"
   Botao b_sair;
   b_sair.x = 3;
   b_sair.y = 8;
@@ -106,6 +115,7 @@ int main(void) {
   b_sair.cor = al_map_rgb(120, 0, 0);
   strcpy(b_sair.texto, "Sair");
 
+  // Configuração visual e de posicionamento do Botão "Apagar Pontuação"
   Botao b_apagar_pontuacao;
   b_apagar_pontuacao.x = 3;
   b_apagar_pontuacao.y = 12;
@@ -116,12 +126,14 @@ int main(void) {
 
   // bool draw = true;
 
-  // loop principal
+// Reset inicial dos dados da cobra e maçã
   inicializar(&cobra, &maca, &ndirecao);
+
+  // Loop principal do jogo (roda enquanto o estado não for SAIR)
   while (estado != SAIR) {
     // para aonde os eventos vao ser enviados
     ALLEGRO_EVENT evento;
-    al_wait_for_event(fila_eventos, &evento);
+al_wait_for_event(fila_eventos, &evento); // Aguarda acontecer alguma ação
 
     // verifica se a pessoa apertou dentro do botao
     if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
@@ -134,7 +146,7 @@ int main(void) {
       }
     }
 
-    // verifica a tecla de direcao apertada
+// Captura as teclas direcionais, impedindo a cobra de voltar para trás diretamente
     if (evento.type == ALLEGRO_EVENT_KEY_DOWN && flag_waitlogic == true) {
       if (evento.keyboard.keycode == ALLEGRO_KEY_UP && ndirecao != BAIXO) {
         ndirecao = CIMA;
@@ -148,33 +160,38 @@ int main(void) {
                  ndirecao != ESQUERDA) {
         ndirecao = DIREITA;
       }
-      flag_waitlogic = false;
+      flag_waitlogic = false; // Bloqueia novos inputs até o próximo ciclo do timer
     }
 
+// Atualização física e renderização (acionado a cada ciclo do Timer)
     if (evento.type == ALLEGRO_EVENT_TIMER) {
       if (estado == JOGO) {
+        // Se entrou no jogo agora, inicializa os objetos
         if (flag_inicializada == false) {
           inicializar(&cobra, &maca, &ndirecao);
           flag_inicializada = true;
-        }
-        logica(&cobra, &maca, &estado, &ndirecao);
-        preencherMapa(&cobra, &maca, mapa);
-        desenhar(mapa);
-        desenharPontuacao(&cobra, fonte);
-        al_flip_display();
-        flag_waitlogic = true;
+}
+        logica(&cobra, &maca, &estado, &ndirecao); // Processa colisões e movimentos
+        preencherMapa(&cobra, &maca, mapa);         // Atualiza a matriz do mapa
+        desenhar(mapa);                            // Desenha o mapa na tela
+        desenharPontuacao(&cobra, fonte);          // Desenha o placar
+        al_flip_display();                         // Atualiza a tela do monitor
+        flag_waitlogic = true;                     // Libera a leitura de novos inputs
       } else {
-        al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpa a tela do Allegro
+        // Renderização do Menu Principal
+        al_clear_to_color(al_map_rgb(0, 0, 0)); 
         desenharBotao(&b_jogar, fonte);
         desenharBotao(&b_sair, fonte);
         desenharBotao(&b_apagar_pontuacao, fonte);
         al_flip_display();
-        flag_inicializada = false;
+        flag_inicializada = false; // Garante reinicialização ao voltar pro jogo
       }
 
       // draw = true;
     }
   }
+
+  // Liberação da memória alocada dinamicamente antes de fechar o programa
   for (int i = 0; i < ALTURA; i++) {
     free(mapa[i]);
   }
@@ -184,12 +201,13 @@ int main(void) {
   return 0;
 }
 
+// Carrega o placar do arquivo binário, lê/escreve as pontuações e atualiza o arquivo
 void salvar_pontuacao(int board[5]) {
   FILE *file = fopen("pontuacao.dat", "rb");//esse arquivo tem que ser aberto para leitura
 
-  if ( file == NULL) {
+  if ( file == NULL) { // Se o arquivo não existir, cria um novo em branco
     fclose(file);
-   file = fopen("pontuacao.dat","wb");
+   file = fopen("pontuacao.dat","wb"); // Reabre para leitura segura
    fclose(file);
   }
 
@@ -198,14 +216,13 @@ void salvar_pontuacao(int board[5]) {
     fclose(file);
 
   //aqui vai ser a funçao que rodrigo vai fazer
-
+// Reabre em modo de escrita para atualizar as informações salvas
     file = fopen("pontuacao.dat","wb");//esse arquivo precisa ser aberto para escrita
-
     fwrite(board,sizeof(int),5,file);
     fclose(file);
 }
 
-
+// Zera uma pontuação específica dentro do vetor do placar (Highscores)
 void apagar_pontuacao(int p, int *board) {
   for (int i = 0; i < 5; i++) {
     if (i == p) {
@@ -216,6 +233,7 @@ void apagar_pontuacao(int p, int *board) {
   // teste de commmit 2!
 }
 
+// Insere a nova pontuação no final do vetor e o ordena de forma decrescente (Bubble Sort)
 void ordenar_vetor(int nova_pontuacao, int *board) {
   if (nova_pontuacao != 0) {
     board[5] = nova_pontuacao;
@@ -234,8 +252,10 @@ void ordenar_vetor(int nova_pontuacao, int *board) {
   }
 }
 
+// Processa toda a física do jogo: movimento, crescimento e colisões
 void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
 
+  // Move os gomos do corpo para a posição do gomo anterior (efeito dominó)
   // i começa no último gomo (tamanho - 1)
   // i vai até 1 (para o gomo i pegar a posição do i-1)
   for (int i = cobra->tamanho - 1; i > 0; i--) {
@@ -248,7 +268,7 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
   cobra->cauda[0].x = cobra->x;
   cobra->cauda[0].y = cobra->y;
 
-  // move a cameça
+  // move a cabeça
   if (*dir == CIMA) {
     cobra->y -= 1;
   } else if (*dir == BAIXO) {
@@ -271,7 +291,7 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
     // inicializa o novo gomo com a mesma posicao do ultimo gomo
     cobra->cauda[cobra->tamanho - 1] = cobra->cauda[cobra->tamanho - 2];
 
-    // Altera a posicao da maca
+// Sorteia nova posição para a maçã garantindo que não nasça em cima da cobra
     bool visivel;
     do {
       visivel = true;
@@ -307,11 +327,13 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
   }
 }
 
+// Desenha o placar atual de pontos no canto superior esquerdo da tela
 void desenharPontuacao(Cabeca *c, ALLEGRO_FONT *fonte) {
   al_draw_textf(fonte, al_map_rgb(255, 255, 255), (1 * TILE) / 2 - 5,
                 (1 * TILE) / 2 - 5, 0, "%d", c->pontuacao);
 }
 
+// Função matemática que checa se as coordenadas do mouse estão dentro do retângulo do botão
 bool clickBotao(Botao botao, int mouse_x, int mouse_y) {
   if (mouse_x >= botao.x * TILE &&
       mouse_x <= (botao.x * TILE + botao.largura * TILE) &&
@@ -321,7 +343,7 @@ bool clickBotao(Botao botao, int mouse_x, int mouse_y) {
   }
   return false; // Clique fora do botão
 }
-
+// Renderiza o retângulo do botão e centraliza o texto dentro dele
 void desenharBotao(Botao *botao, ALLEGRO_FONT *fonte) {
   al_draw_filled_rectangle(botao->x * TILE, botao->y * TILE, botao->x * TILE + botao->largura * TILE, botao->y * TILE + botao->altura * TILE, botao->cor);
   al_draw_text(fonte, al_map_rgb(255, 255, 255),
@@ -330,6 +352,7 @@ void desenharBotao(Botao *botao, ALLEGRO_FONT *fonte) {
                ALLEGRO_ALIGN_CENTRE, botao->texto);
 }
 
+// Varre a matriz 'mapa' e renderiza os gráficos adequados para cada ID (Cobra, Maçã, Parede)
 void desenhar(int **mapa) {
   al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpa a tela do Allegro
 
@@ -346,39 +369,43 @@ void desenhar(int **mapa) {
       int espacamento_gomo = (TILE * 31 / 32);
       int espacamento_maca = (TILE * 6 / 32);
 
-      if (mapa[y][x] == 1) { // Cabeça
+      if (mapa[y][x] == 1) { // Desenha Cabeça (Verde Escuro)
         al_draw_filled_rectangle(x1 + espacamento_gomo, y1 + espacamento_gomo,
                                  x2 - espacamento_gomo, y2 - espacamento_gomo,
                                  al_map_rgb(0, 150, 0));
-      } else if (mapa[y][x] == 2) { // Cauda
+      } else if (mapa[y][x] == 2) { // Desenha Cauda/Corpo (Verde Claro)
         al_draw_filled_rectangle(x1 + espacamento_gomo, y1 + espacamento_gomo,
                                  x2 - espacamento_gomo, y2 - espacamento_gomo,
                                  al_map_rgb(0, 255, 0));
-      } else if (mapa[y][x] == 3) { // Maçã
+      } else if (mapa[y][x] == 3) { // Desenha Maçã (Vermelho)
         al_draw_filled_rectangle(x1 + espacamento_maca, y1 + espacamento_maca,
                                  x2 - espacamento_maca, y2 - espacamento_maca,
                                  al_map_rgb(255, 0, 0));
-      } else if (mapa[y][x] == 4) { // Parede
+      } else if (mapa[y][x] == 4) { // Desenha Parede/Borda (Amarelo)
         al_draw_filled_rectangle(x1, y1, x2, y2, al_map_rgb(200, 200, 0));
       }
     }
   }
 }
 
+// Atualiza os IDs da matriz do mapa baseado nas posições atuais da Cobra, Maçã e das Paredes
 void preencherMapa(Cabeca *cobra, Maca *maca, int **mapa) {
   for (int y = 0; y < ALTURA; y++) {
     for (int x = 0; x < LARGURA; x++) {
 
+      // Define ID 4 se for borda da matriz, senão limpa com 0 (vazio)
       if (y == 0 || y == ALTURA - 1 || x == 0 || x == LARGURA - 1) {
         mapa[y][x] = 4;
       } else {
         mapa[y][x] = 0;
       }
 
+      // Aplica ID 3 na posição da Maçã
       if (y == maca->y && x == maca->x) {
         mapa[y][x] = 3;
       }
 
+      // Aplica ID 2 em cada posição que contém parte do corpo da cobra
       for (int k = 0; k < cobra->tamanho; k++) {
         if (y == cobra->cauda[k].y && x == cobra->cauda[k].x) {
           mapa[y][x] = 2;
@@ -386,13 +413,14 @@ void preencherMapa(Cabeca *cobra, Maca *maca, int **mapa) {
         }
       }
 
+      // Aplica ID 1 na posição exata da Cabeça (sobrepõe o corpo se necessário)
       if (y == cobra->y && x == cobra->x) {
         mapa[y][x] = 1;
       }
     }
   }
 }
-
+// Configura o estado inicial padrão de jogo ao iniciar ou reiniciar a partida
 void inicializar(Cabeca *cobra, Maca *maca, Direcao *dir) {
   // 1. Configuração da Cabeça
   *dir = ESQUERDA;
