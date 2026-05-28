@@ -2,7 +2,6 @@
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_ttf.h>
-#include <allegro5/keycodes.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,6 +55,10 @@ void preencherMapa(Cabeca *cobra, Maca *maca, int **mapa);
 void desenharBotao(Botao *botao, ALLEGRO_FONT *fonte);
 bool clickBotao(Botao botao, int mouse_x, int mouse_y);
 void desenharPontuacao(Cabeca *c, ALLEGRO_FONT *fonte);
+void ordenar_pontuacao(int nova_pontuacao, int *board);
+void ler_pontuacao(int *board);
+void salvar_pontuacao(int *board);
+void apagar_pontuacao(int p, int *board);
 
 int main(void) {
   al_init();                  // Liga o Allegro
@@ -65,10 +68,11 @@ int main(void) {
   al_init_ttf_addon();        // Liga o suporte a fontes TTF
   al_install_mouse();         // Liga o suporte ao mouse
 
-  ALLEGRO_FONT *fonte = al_create_builtin_font(); // Cria a fonte padrão do Allegro
+  ALLEGRO_FONT *fonte = al_load_font("BigBlueTerm437NerdFontMono-Regular.ttf",
+                                     20, 0); // Cria a fonte padrão do Allegro
 
   // Define o fps que o jogo roda-ra (10 fps)
-  ALLEGRO_TIMER *timer = al_create_timer(1.0 / 10.0); 
+  ALLEGRO_TIMER *timer = al_create_timer(1.0 / 10.0);
   al_start_timer(timer);
 
   // Cria a janela do jogo (Display)
@@ -126,14 +130,14 @@ int main(void) {
 
   // bool draw = true;
 
-// Reset inicial dos dados da cobra e maçã
+  // Reset inicial dos dados da cobra e maçã
   inicializar(&cobra, &maca, &ndirecao);
 
   // Loop principal do jogo (roda enquanto o estado não for SAIR)
   while (estado != SAIR) {
     // para aonde os eventos vao ser enviados
     ALLEGRO_EVENT evento;
-al_wait_for_event(fila_eventos, &evento); // Aguarda acontecer alguma ação
+    al_wait_for_event(fila_eventos, &evento); // Aguarda acontecer alguma ação
 
     // verifica se a pessoa apertou dentro do botao
     if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
@@ -146,48 +150,44 @@ al_wait_for_event(fila_eventos, &evento); // Aguarda acontecer alguma ação
       }
     }
 
-// Captura as teclas direcionais, impedindo a cobra de voltar para trás diretamente
+    // Captura as teclas direcionais, impedindo a cobra de voltar para trás
+    // diretamente
     if (evento.type == ALLEGRO_EVENT_KEY_DOWN && flag_waitlogic == true) {
       if (evento.keyboard.keycode == ALLEGRO_KEY_UP && ndirecao != BAIXO) {
         ndirecao = CIMA;
-      } else if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN &&
-                 ndirecao != CIMA) {
+      } else if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN && ndirecao != CIMA) {
         ndirecao = BAIXO;
-      } else if (evento.keyboard.keycode == ALLEGRO_KEY_LEFT &&
-                 ndirecao != DIREITA) {
+      } else if (evento.keyboard.keycode == ALLEGRO_KEY_LEFT && ndirecao != DIREITA) {
         ndirecao = ESQUERDA;
-      } else if (evento.keyboard.keycode == ALLEGRO_KEY_RIGHT &&
-                 ndirecao != ESQUERDA) {
+      } else if (evento.keyboard.keycode == ALLEGRO_KEY_RIGHT && ndirecao != ESQUERDA) {
         ndirecao = DIREITA;
       }
       flag_waitlogic = false; // Bloqueia novos inputs até o próximo ciclo do timer
     }
 
-// Atualização física e renderização (acionado a cada ciclo do Timer)
+    // Atualização física e renderização (acionado a cada ciclo do Timer)
     if (evento.type == ALLEGRO_EVENT_TIMER) {
       if (estado == JOGO) {
         // Se entrou no jogo agora, inicializa os objetos
         if (flag_inicializada == false) {
           inicializar(&cobra, &maca, &ndirecao);
           flag_inicializada = true;
-}
+        }
         logica(&cobra, &maca, &estado, &ndirecao); // Processa colisões e movimentos
-        preencherMapa(&cobra, &maca, mapa);         // Atualiza a matriz do mapa
-        desenhar(mapa);                            // Desenha o mapa na tela
-        desenharPontuacao(&cobra, fonte);          // Desenha o placar
-        al_flip_display();                         // Atualiza a tela do monitor
-        flag_waitlogic = true;                     // Libera a leitura de novos inputs
+        preencherMapa(&cobra, &maca, mapa);       // Atualiza a matriz do mapa
+        desenhar(mapa);                          // Desenha o mapa na tela
+        desenharPontuacao(&cobra, fonte);       // Desenha o placar
+        al_flip_display();                     // Atualiza a tela do monitor
+        flag_waitlogic = true;                // Libera a leitura de novos inputs
       } else {
         // Renderização do Menu Principal
-        al_clear_to_color(al_map_rgb(0, 0, 0)); 
+        al_clear_to_color(al_map_rgb(0, 0, 0));
         desenharBotao(&b_jogar, fonte);
         desenharBotao(&b_sair, fonte);
         desenharBotao(&b_apagar_pontuacao, fonte);
         al_flip_display();
-        flag_inicializada = false; // Garante reinicialização ao voltar pro jogo
+        flag_inicializada = false; // Garante reinicialização das variaveis ao voltar pro jogo
       }
-
-      // draw = true;
     }
   }
 
@@ -201,25 +201,28 @@ al_wait_for_event(fila_eventos, &evento); // Aguarda acontecer alguma ação
   return 0;
 }
 
-// Carrega o placar do arquivo binário, lê/escreve as pontuações e atualiza o arquivo
-void salvar_pontuacao(int board[5]) {
-  FILE *file = fopen("pontuacao.dat", "rb");//esse arquivo tem que ser aberto para leitura
-
-  if ( file == NULL) { // Se o arquivo não existir, cria um novo em branco
+// Carrega/le o placar do arquivo binário;
+void ler_pontuacao(int *board) {
+  FILE *file = fopen("pontuacao.dat", "rb");
+  if (file == NULL) {
     fclose(file);
-   file = fopen("pontuacao.dat","wb"); // Reabre para leitura segura
-   fclose(file);
+    file = fopen("pontuacao.dat", "wb");
+    fclose(file);
+    FILE *file = fopen("pontuacao.dat", "rb");
   }
+  fread(board, sizeof(int), 6, file);
+  fclose(file);
+}
 
-    fread(board,sizeof(int),5,file);
+// escreve as pontuações e atualiza o arquivo
+void salvar_pontuacao(int *board) {
+  FILE *file = fopen("pontuacao.dat", "wb");
+  fwrite(board, sizeof(int), 6, file);
+  fclose(file);
+}
 
-    fclose(file);
-
-  //aqui vai ser a funçao que rodrigo vai fazer
-// Reabre em modo de escrita para atualizar as informações salvas
-    file = fopen("pontuacao.dat","wb");//esse arquivo precisa ser aberto para escrita
-    fwrite(board,sizeof(int),5,file);
-    fclose(file);
+// começando a ver como receber player input de texto
+void player_text_input(char *string, ALLEGRO_EVENT *evento) {
 }
 
 // Zera uma pontuação específica dentro do vetor do placar (Highscores)
@@ -233,15 +236,16 @@ void apagar_pontuacao(int p, int *board) {
   // teste de commmit 2!
 }
 
-// Insere a nova pontuação no final do vetor e o ordena de forma decrescente (Bubble Sort)
-void ordenar_vetor(int nova_pontuacao, int *board) {
+// Insere a nova pontuação no final do vetor e o ordena de forma decrescente
+// (Bubble Sort)
+void ordenar_pontuacao(int nova_pontuacao, int *board) {
   if (nova_pontuacao != 0) {
     board[5] = nova_pontuacao;
   }
   bool modificou = true;
   for (int i = 0; i < 5 && modificou == true; i++) {
     modificou = false;
-    for (int k = 0; k < 5; k++){
+    for (int k = 0; k < 5; k++) {
       if (board[k] < board[k + 1]) {
         int temp = board[k + 1];
         board[k + 1] = board[k];
@@ -250,6 +254,7 @@ void ordenar_vetor(int nova_pontuacao, int *board) {
       }
     }
   }
+  board[5] = 0;
 }
 
 // Processa toda a física do jogo: movimento, crescimento e colisões
@@ -291,7 +296,8 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
     // inicializa o novo gomo com a mesma posicao do ultimo gomo
     cobra->cauda[cobra->tamanho - 1] = cobra->cauda[cobra->tamanho - 2];
 
-// Sorteia nova posição para a maçã garantindo que não nasça em cima da cobra
+    // Sorteia nova posição para a maçã garantindo que não nasça em cima da
+    // cobra
     bool visivel;
     do {
       visivel = true;
@@ -333,7 +339,8 @@ void desenharPontuacao(Cabeca *c, ALLEGRO_FONT *fonte) {
                 (1 * TILE) / 2 - 5, 0, "%d", c->pontuacao);
 }
 
-// Função matemática que checa se as coordenadas do mouse estão dentro do retângulo do botão
+// Função matemática que checa se as coordenadas do mouse estão dentro do
+// retângulo do botão
 bool clickBotao(Botao botao, int mouse_x, int mouse_y) {
   if (mouse_x >= botao.x * TILE &&
       mouse_x <= (botao.x * TILE + botao.largura * TILE) &&
@@ -341,18 +348,21 @@ bool clickBotao(Botao botao, int mouse_x, int mouse_y) {
       mouse_y <= (botao.y * TILE + botao.altura * TILE)) {
     return true; // Sucesso!
   }
-  return false; // Clique fora do botão
+  return false; // Clicou fora do botão
 }
 // Renderiza o retângulo do botão e centraliza o texto dentro dele
 void desenharBotao(Botao *botao, ALLEGRO_FONT *fonte) {
-  al_draw_filled_rectangle(botao->x * TILE, botao->y * TILE, botao->x * TILE + botao->largura * TILE, botao->y * TILE + botao->altura * TILE, botao->cor);
+  al_draw_filled_rectangle(botao->x * TILE, botao->y * TILE,
+                           botao->x * TILE + botao->largura * TILE,
+                           botao->y * TILE + botao->altura * TILE, botao->cor);
   al_draw_text(fonte, al_map_rgb(255, 255, 255),
                botao->x * TILE + (botao->largura * TILE / 2),
                botao->y * TILE + (botao->altura * TILE / 2),
                ALLEGRO_ALIGN_CENTRE, botao->texto);
 }
 
-// Varre a matriz 'mapa' e renderiza os gráficos adequados para cada ID (Cobra, Maçã, Parede)
+// Varre a matriz 'mapa' e renderiza os gráficos adequados para cada ID (Cobra,
+// Maçã, Parede)
 void desenhar(int **mapa) {
   al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpa a tela do Allegro
 
@@ -388,7 +398,8 @@ void desenhar(int **mapa) {
   }
 }
 
-// Atualiza os IDs da matriz do mapa baseado nas posições atuais da Cobra, Maçã e das Paredes
+// Atualiza os IDs da matriz do mapa baseado nas posições atuais da Cobra, Maçã
+// e das Paredes
 void preencherMapa(Cabeca *cobra, Maca *maca, int **mapa) {
   for (int y = 0; y < ALTURA; y++) {
     for (int x = 0; x < LARGURA; x++) {
