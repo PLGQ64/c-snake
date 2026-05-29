@@ -108,7 +108,7 @@ int main(void) {
   bool flag_inicializada = false;
   bool flag_salvar = false;
   bool flag_apagar_pontuacao = false;
-  int board[6] = {0, 0, 0, 0, 0, 0};
+  int board[6] = {10, 120, 20, 330, 30, 1230};
 
   // Configuração visual e de posicionamento do Botão "Jogar"
   Botao b_jogar;
@@ -141,7 +141,7 @@ int main(void) {
 
   // Reset inicial dos dados da cobra e maçã
   inicializar(&cobra, &maca, &ndirecao);
-  ler_pontuacao(board);
+  // ler_pontuacao(board);
 
   int pos = 0;
   // Loop principal do jogo (roda enquanto o estado não for SAIR)
@@ -183,7 +183,7 @@ int main(void) {
         evento.type == ALLEGRO_EVENT_KEY_DOWN) {
       if (evento.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
         flag_apagar_pontuacao = false;
-      } else if (evento.keyboard.keycode == ALLEGRO_KEY_UP && pos >= 0) {
+      } else if (evento.keyboard.keycode == ALLEGRO_KEY_UP && pos > 0) {
         pos--;
       } else if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN && pos < 5) {
         pos++;
@@ -268,7 +268,7 @@ void salvar_pontuacao(int *board) {
 void desenhar_scoreboard(int *board, ALLEGRO_FONT *font) {
   al_draw_filled_rectangle(11 * TILE, 4 * TILE, 13 * TILE, 10 * TILE,
                            al_map_rgb(30, 175, 175));
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 5; i++) {
     al_draw_textf(font, al_map_rgb(255, 255, 255), 12 * TILE,
                   (4 + i) * TILE + 10, ALLEGRO_ALIGN_CENTER, "%d", board[i]);
   }
@@ -288,7 +288,7 @@ void apagar_pontuacao(int p, int *board) {
 // Insere a nova pontuação no final do vetor e o ordena de forma decrescente
 // (Bubble Sort)
 void ordenar_pontuacao(int nova_pontuacao, int *board) {
-  if (nova_pontuacao != 0) {
+  if (nova_pontuacao > board[5]) {
     board[5] = nova_pontuacao;
   }
   bool modificou = true;
