@@ -2,6 +2,10 @@
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_ttf.h>
+#include <allegro5/color.h>
+#include <allegro5/events.h>
+#include <allegro5/keycodes.h>
+#include <allegro5/timer.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,6 +63,8 @@ void ordenar_pontuacao(int nova_pontuacao, int *board);
 void ler_pontuacao(int *board);
 void salvar_pontuacao(int *board);
 void apagar_pontuacao(int p, int *board);
+void desenhar_scoreboard(int *board, ALLEGRO_FONT *font);
+
 
 int main(void) {
   al_init();                  // Liga o Allegro
@@ -100,6 +106,9 @@ int main(void) {
   Estado estado = MENU;
   bool flag_waitlogic = false; // Evita que o jogador mude de direção duas vezes no mesmo frame
   bool flag_inicializada = false;
+  bool flag_salvar = false;
+  bool flag_apagar_pontuacao = false;
+  int board[6] = {0, 0, 0, 0, 0, 0};
 
   // Configuração visual e de posicionamento do Botão "Jogar"
   Botao b_jogar;
@@ -132,7 +141,9 @@ int main(void) {
 
   // Reset inicial dos dados da cobra e maçã
   inicializar(&cobra, &maca, &ndirecao);
+  ler_pontuacao(board);
 
+  int pos = 0;
   // Loop principal do jogo (roda enquanto o estado não for SAIR)
   while (estado != SAIR) {
     // para aonde os eventos vao ser enviados
@@ -147,6 +158,8 @@ int main(void) {
         estado = JOGO;
       } else if (clickBotao(b_sair, mx, my)) {
         estado = SAIR;
+      } else if (clickBotao(b_apagar_pontuacao, mx, my)){
+        flag_apagar_pontuacao = true;
       }
     }
 
@@ -165,6 +178,20 @@ int main(void) {
       flag_waitlogic = false; // Bloqueia novos inputs até o próximo ciclo do timer
     }
 
+    // recebe o input do teclado e atualiza a variavel pos
+    if (flag_apagar_pontuacao == true &&
+        evento.type == ALLEGRO_EVENT_KEY_DOWN) {
+      if (evento.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
+        flag_apagar_pontuacao = false;
+      } else if (evento.keyboard.keycode == ALLEGRO_KEY_UP && pos >= 0) {
+        pos--;
+      } else if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN && pos < 5) {
+        pos++;
+      } else if (evento.keyboard.keycode == ALLEGRO_KEY_ENTER) {
+        apagar_pontuacao(board[pos], board);
+      }
+    }
+
     // Atualização física e renderização (acionado a cada ciclo do Timer)
     if (evento.type == ALLEGRO_EVENT_TIMER) {
       if (estado == JOGO) {
@@ -179,17 +206,33 @@ int main(void) {
         desenharPontuacao(&cobra, fonte);       // Desenha o placar
         al_flip_display();                     // Atualiza a tela do monitor
         flag_waitlogic = true;                // Libera a leitura de novos inputs
-      } else {
+        flag_salvar = true;
+      } else if (estado == MENU){
+        if (flag_salvar == true) {
+          ordenar_pontuacao(cobra.pontuacao, board);
+          salvar_pontuacao(board);
+        }
         // Renderização do Menu Principal
         al_clear_to_color(al_map_rgb(0, 0, 0));
         desenharBotao(&b_jogar, fonte);
         desenharBotao(&b_sair, fonte);
         desenharBotao(&b_apagar_pontuacao, fonte);
+        desenhar_scoreboard(board, fonte);
+
+        // desenha o quadradinho amarelo quando selecionando a pontuacao para
+        // apgar
+        if (flag_apagar_pontuacao == true) {
+          al_draw_rectangle(11 * TILE, (4 + pos) * TILE, 13 * TILE,
+                            (5 + pos) * TILE, al_map_rgb(180, 180, 0), 5);
+        }
+
         al_flip_display();
         flag_inicializada = false; // Garante reinicialização das variaveis ao voltar pro jogo
+        flag_salvar = false;
       }
     }
   }
+
 
   // Liberação da memória alocada dinamicamente antes de fechar o programa
   for (int i = 0; i < ALTURA; i++) {
@@ -201,39 +244,45 @@ int main(void) {
   return 0;
 }
 
-// Carrega/le o placar do arquivo binário;
+// Carrega/le o placar do arquivo binário
 void ler_pontuacao(int *board) {
-  FILE *file = fopen("pontuacao.dat", "rb");
+  FILE *file = fopen("pontuacao.bin", "rb");
   if (file == NULL) {
+    file = fopen("pontuacao.bin", "wb");
+    fwrite(board, sizeof(int), 6, file);
     fclose(file);
-    file = fopen("pontuacao.dat", "wb");
-    fclose(file);
-    FILE *file = fopen("pontuacao.dat", "rb");
+    file = fopen("pontuacao.bin", "rb");
   }
   fread(board, sizeof(int), 6, file);
   fclose(file);
 }
 
-// escreve as pontuações e atualiza o arquivo
+// salva a pontuacao no arquivo
 void salvar_pontuacao(int *board) {
-  FILE *file = fopen("pontuacao.dat", "wb");
+  FILE *file = fopen("pontuacao.bin", "wb");
   fwrite(board, sizeof(int), 6, file);
   fclose(file);
 }
 
-// começando a ver como receber player input de texto
-void player_text_input(char *string, ALLEGRO_EVENT *evento) {
+// desenha a score board
+void desenhar_scoreboard(int *board, ALLEGRO_FONT *font) {
+  al_draw_filled_rectangle(11 * TILE, 4 * TILE, 13 * TILE, 10 * TILE,
+                           al_map_rgb(30, 175, 175));
+  for (int i = 0; i < 6; i++) {
+    al_draw_textf(font, al_map_rgb(255, 255, 255), 12 * TILE,
+                  (4 + i) * TILE + 10, ALLEGRO_ALIGN_CENTER, "%d", board[i]);
+  }
 }
 
 // Zera uma pontuação específica dentro do vetor do placar (Highscores)
 void apagar_pontuacao(int p, int *board) {
   for (int i = 0; i < 5; i++) {
-    if (i == p) {
+    if (board[i] == p) {
       board[i] = 0;
     }
   }
-  // chamar funcao de salvar
-  // teste de commmit 2!
+  ordenar_pontuacao(0, board);
+  salvar_pontuacao(board);
 }
 
 // Insere a nova pontuação no final do vetor e o ordena de forma decrescente
@@ -254,7 +303,6 @@ void ordenar_pontuacao(int nova_pontuacao, int *board) {
       }
     }
   }
-  board[5] = 0;
 }
 
 // Processa toda a física do jogo: movimento, crescimento e colisões
