@@ -188,7 +188,7 @@ int main(void) {
       } else if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN && pos < 5) {
         pos++;
       } else if (evento.keyboard.keycode == ALLEGRO_KEY_ENTER) {
-        apagar_pontuacao(board[pos], board);
+        apagar_pontuacao(pos, board);
       }
     }
 
@@ -277,7 +277,7 @@ void desenhar_scoreboard(int *board, ALLEGRO_FONT *font) {
 // Zera uma pontuação específica dentro do vetor do placar (Highscores)
 void apagar_pontuacao(int p, int *board) {
   for (int i = 0; i < 5; i++) {
-    if (board[i] == p) {
+    if (i == p) {
       board[i] = 0;
     }
   }
