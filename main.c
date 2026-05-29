@@ -268,7 +268,7 @@ void salvar_pontuacao(int *board) {
 void desenhar_scoreboard(int *board, ALLEGRO_FONT *font) {
   al_draw_filled_rectangle(11 * TILE, 4 * TILE, 13 * TILE, 10 * TILE,
                            al_map_rgb(30, 175, 175));
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 6; i++) {
     al_draw_textf(font, al_map_rgb(255, 255, 255), 12 * TILE,
                   (4 + i) * TILE + 10, ALLEGRO_ALIGN_CENTER, "%d", board[i]);
   }
