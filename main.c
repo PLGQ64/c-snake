@@ -3,6 +3,7 @@
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_ttf.h>
 #include <allegro5/color.h>
+#include <allegro5/drawing.h>
 #include <allegro5/events.h>
 #include <allegro5/keycodes.h>
 #include <allegro5/timer.h>
@@ -64,6 +65,7 @@ void ler_pontuacao(int *board);
 void salvar_pontuacao(int *board);
 void apagar_pontuacao(int p, int *board);
 void desenhar_scoreboard(int *board, ALLEGRO_FONT *font);
+void grid();
 
 
 int main(void) {
@@ -108,7 +110,7 @@ int main(void) {
   bool flag_inicializada = false;
   bool flag_salvar = false;
   bool flag_apagar_pontuacao = false;
-  int board[6] = {10, 120, 20, 330, 30, 1230};
+  int board[6] = {0, 0, 0, 0, 0, 0};
 
   // Configuração visual e de posicionamento do Botão "Jogar"
   Botao b_jogar;
@@ -141,7 +143,7 @@ int main(void) {
 
   // Reset inicial dos dados da cobra e maçã
   inicializar(&cobra, &maca, &ndirecao);
-  // ler_pontuacao(board);
+  ler_pontuacao(board);
 
   int pos = 0;
   // Loop principal do jogo (roda enquanto o estado não for SAIR)
@@ -195,6 +197,7 @@ int main(void) {
     // Atualização física e renderização (acionado a cada ciclo do Timer)
     if (evento.type == ALLEGRO_EVENT_TIMER) {
       if (estado == JOGO) {
+
         // Se entrou no jogo agora, inicializa os objetos
         if (flag_inicializada == false) {
           inicializar(&cobra, &maca, &ndirecao);
@@ -202,18 +205,24 @@ int main(void) {
         }
         logica(&cobra, &maca, &estado, &ndirecao); // Processa colisões e movimentos
         preencherMapa(&cobra, &maca, mapa);       // Atualiza a matriz do mapa
-        desenhar(mapa);                          // Desenha o mapa na tela
-        desenharPontuacao(&cobra, fonte);       // Desenha o placar
-        al_flip_display();                     // Atualiza a tela do monitor
-        flag_waitlogic = true;                // Libera a leitura de novos inputs
+        al_clear_to_color(al_map_rgb(0, 0, 0));  // pinta a tela toda de preto
+        grid();                                 // desenha a grade no fundo preto
+        desenhar(mapa);                        // Desenha o mapa na tela
+        desenharPontuacao(&cobra, fonte);     // Desenha o placar
+        al_flip_display();                   // Atualiza a tela do monitor
+        flag_waitlogic = true;              // Libera a leitura de novos inputs
         flag_salvar = true;
+
       } else if (estado == MENU){
         if (flag_salvar == true) {
           ordenar_pontuacao(cobra.pontuacao, board);
           salvar_pontuacao(board);
+          flag_salvar = false;
         }
+
         // Renderização do Menu Principal
         al_clear_to_color(al_map_rgb(0, 0, 0));
+        grid();
         desenharBotao(&b_jogar, fonte);
         desenharBotao(&b_sair, fonte);
         desenharBotao(&b_apagar_pontuacao, fonte);
@@ -276,7 +285,7 @@ void desenhar_scoreboard(int *board, ALLEGRO_FONT *font) {
 
 // Zera uma pontuação específica dentro do vetor do placar (Highscores)
 void apagar_pontuacao(int p, int *board) {
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 6; i++) {
     if (i == p) {
       board[i] = 0;
     }
@@ -294,7 +303,7 @@ void ordenar_pontuacao(int nova_pontuacao, int *board) {
   bool modificou = true;
   for (int i = 0; i < 5 && modificou == true; i++) {
     modificou = false;
-    for (int k = 0; k < 5; k++) {
+    for (int k = 0; k < 5 - i; k++) {
       if (board[k] < board[k + 1]) {
         int temp = board[k + 1];
         board[k + 1] = board[k];
@@ -379,6 +388,10 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
       *estado = MENU;
     }
   }
+
+  if (cobra->tamanho == 483) {
+    *estado = MENU;
+  }
 }
 
 // Desenha o placar atual de pontos no canto superior esquerdo da tela
@@ -412,8 +425,6 @@ void desenharBotao(Botao *botao, ALLEGRO_FONT *fonte) {
 // Varre a matriz 'mapa' e renderiza os gráficos adequados para cada ID (Cobra,
 // Maçã, Parede)
 void desenhar(int **mapa) {
-  al_clear_to_color(al_map_rgb(0, 0, 0)); // Limpa a tela do Allegro
-
   for (int y = 0; y < ALTURA; y++) {
     for (int x = 0; x < LARGURA; x++) {
 
@@ -425,20 +436,29 @@ void desenhar(int **mapa) {
 
       // deixa um espaco para separar a cabeca e o da maca deixa ela menor
       int espacamento_gomo = (TILE * 31 / 32);
-      int espacamento_maca = (TILE * 6 / 32);
+      int espacamento_maca = (TILE * 8 / 32);
 
       if (mapa[y][x] == 1) { // Desenha Cabeça (Verde Escuro)
         al_draw_filled_rectangle(x1 + espacamento_gomo, y1 + espacamento_gomo,
                                  x2 - espacamento_gomo, y2 - espacamento_gomo,
                                  al_map_rgb(0, 150, 0));
+        al_draw_rectangle(x1 + espacamento_gomo - 2, y1 + espacamento_gomo - 2,
+                          x2 - espacamento_gomo + 2, y2 - espacamento_gomo + 2,
+                          al_map_rgb(0, 100, 0), 4);
       } else if (mapa[y][x] == 2) { // Desenha Cauda/Corpo (Verde Claro)
         al_draw_filled_rectangle(x1 + espacamento_gomo, y1 + espacamento_gomo,
                                  x2 - espacamento_gomo, y2 - espacamento_gomo,
                                  al_map_rgb(0, 255, 0));
+        al_draw_rectangle(x1 + espacamento_gomo - 2, y1 + espacamento_gomo - 2,
+                          x2 - espacamento_gomo + 2, y2 - espacamento_gomo + 2,
+                          al_map_rgb(0, 150, 0), 4);
       } else if (mapa[y][x] == 3) { // Desenha Maçã (Vermelho)
         al_draw_filled_rectangle(x1 + espacamento_maca, y1 + espacamento_maca,
                                  x2 - espacamento_maca, y2 - espacamento_maca,
                                  al_map_rgb(255, 0, 0));
+        al_draw_rectangle(x1 + espacamento_maca - 2, y1 + espacamento_maca - 2,
+                          x2 - espacamento_maca + 2, y2 - espacamento_maca + 2,
+                          al_map_rgb(130, 0, 0), 4);
       } else if (mapa[y][x] == 4) { // Desenha Parede/Borda (Amarelo)
         al_draw_filled_rectangle(x1, y1, x2, y2, al_map_rgb(200, 200, 0));
       }
@@ -501,4 +521,18 @@ void inicializar(Cabeca *cobra, Maca *maca, Direcao *dir) {
   maca->x = rand() % (LARGURA - 2) + 1;
   maca->y = rand() % (ALTURA - 2) + 1;
   maca->pontos = 1;
+}
+
+// desenhar grade no fundo preto do jogo
+void grid() {
+  for (int y = 0; y < ALTURA; y++) {
+    for (int x = 0; x < LARGURA; x++) {
+      // Coordenadas de pixels baseadas na posição da matriz
+      int x1 = x * TILE;
+      int y1 = y * TILE;
+      int x2 = x1 + TILE;
+      int y2 = y1 + TILE;
+      al_draw_rectangle(x1, y1, x2, y2, al_map_rgb(50,50,50), 2);
+    }
+  }
 }
