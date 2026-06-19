@@ -154,6 +154,7 @@ int main(void) {
 
         // Se entrou no jogo agora, inicializa os objetos
         if (flag_inicializada == false) {
+          liberar_lista(&cobra);
           inicializar(&cobra, &maca, &ndirecao);
           flag_inicializada = true;
         }
@@ -202,7 +203,7 @@ int main(void) {
     free(mapa[i]);
   }
   free(mapa);
-  free(cobra.cauda);
+  liberar_lista(&cobra);
 
   return 0;
 }

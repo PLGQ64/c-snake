@@ -1,20 +1,59 @@
 #include "jogo.h"
+#include "utils.h"
 
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdlib.h>
+
+void inserir_final(Cabeca *cobra) {
+  struct No *pi = cobra->cauda->fim;
+  struct No *novo;
+
+  novo = (struct No *)malloc(sizeof(struct No));
+  novo->proximo = NULL;
+  novo->anterior = NULL;
+
+  if (cobra->cauda->inicio == NULL) {
+    novo->dado.x = cobra->x + 1;
+    novo->dado.y = cobra->y;
+    cobra->cauda->inicio = novo;
+    cobra->cauda->fim = novo;
+    return;
+  }
+  novo->anterior = pi;
+  pi->proximo = novo;
+  cobra->cauda->fim = novo;
+}
+
+void liberar_lista(Cabeca *cobra) {
+  struct No *pi = cobra->cauda->inicio;
+  struct No *proximo;
+  while (pi != NULL) {
+    proximo = pi->proximo;
+    free(pi);
+    pi = proximo;
+  }
+  free(cobra->cauda);
+  cobra->cauda = NULL;
+}
 
 void inicializar(Cabeca *cobra, Maca *maca, Direcao *dir) {
   *dir = ESQUERDA;
   cobra->x = LARGURA / 2;
   cobra->y = ALTURA / 2;
   cobra->pontuacao = 0;
-  cobra->tamanho = 5;
+  cobra->tamanho = 0;
 
-  cobra->cauda = (Corpo *)malloc(cobra->tamanho * sizeof(Corpo));
-  for (int i = 0; i < cobra->tamanho; i++) {
-    cobra->cauda[i].x = cobra->x + (i + 1);
-    cobra->cauda[i].y = cobra->y;
-  }
+  cobra->cauda = (Lista *)malloc(sizeof(Lista));
+  cobra->cauda->inicio = NULL;
+  cobra->cauda->fim = NULL;
+
+  // cobra->cauda = (Corpo *)malloc(cobra->tamanho * sizeof(Corpo));
+  // for (int i = 0; i < cobra->tamanho; i++) {
+  //   cobra->cauda[i].x = cobra->x + (i + 1);
+  //   cobra->cauda[i].y = cobra->y;
+  // }
+  inserir_final(cobra);
 
   maca->x = rand() % (LARGURA - 2) + 1;
   maca->y = rand() % (ALTURA - 2) + 1;
@@ -24,17 +63,34 @@ void inicializar(Cabeca *cobra, Maca *maca, Direcao *dir) {
 // Processa toda a física do jogo: movimento, crescimento e colisões
 void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
   // Move os gomos do corpo para a posição do gomo anterior (efeito dominó)
-  for (int i = cobra->tamanho - 1; i > 0; i--) {
-    cobra->cauda[i].x = cobra->cauda[i - 1].x;
-    cobra->cauda[i].y = cobra->cauda[i - 1].y;
-  }
+
+  // for (int i = cobra->tamanho - 1; i > 0; i--) {
+  //   cobra->cauda[i].x = cobra->cauda[i - 1].x;
+  //   cobra->cauda[i].y = cobra->cauda[i - 1].y;
+  // }
 
   // Depois que todos os gomos "andaram" para a frente, o gomo zero pega a mesma
   // posicao da cabeça
-  cobra->cauda[0].x = cobra->x;
-  cobra->cauda[0].y = cobra->y;
+
+  // cobra->cauda[0].x = cobra->x;
+  // cobra->cauda[0].y = cobra->y;
 
   // move a cabeça
+
+  struct No *atual = cobra->cauda->fim;
+  // while (atual->proximo != NULL) {
+  //   atual = atual->proximo;
+  // }
+
+  while (atual->anterior != NULL) {
+    atual->dado.x = atual->anterior->dado.x;
+    atual->dado.y = atual->anterior->dado.y;
+    atual = atual->anterior;
+  }
+
+  cobra->cauda->inicio->dado.x = cobra->x;
+  cobra->cauda->inicio->dado.y = cobra->y;
+
   if (*dir == CIMA) {
     cobra->y -= 1;
   } else if (*dir == BAIXO) {
@@ -47,10 +103,11 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
 
   // verifica se a cabeça pegou a maça
   if (cobra->x == maca->x && cobra->y == maca->y) {
+    inserir_final(cobra);
     cobra->tamanho += 1;
     cobra->pontuacao += maca->pontos;
-    cobra->cauda = realloc(cobra->cauda, cobra->tamanho * sizeof(Corpo));
-    cobra->cauda[cobra->tamanho - 1] = cobra->cauda[cobra->tamanho - 2];
+    // cobra->cauda = realloc(cobra->cauda, cobra->tamanho * sizeof(Corpo));
+    // cobra->cauda[cobra->tamanho - 1] = cobra->cauda[cobra->tamanho - 2];
 
     bool visivel;
     do {
@@ -62,11 +119,13 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
         visivel = false;
         continue; // sorteio caiu na cabeça: sorteia tudo de novo
       }
-      for (int i = 0; i < cobra->tamanho; i++) {
-        if (cobra->cauda[i].x == maca->x && cobra->cauda[i].y == maca->y) {
+      atual = cobra->cauda->inicio;
+      while (atual != NULL) {
+        if (atual->dado.x == maca->x && atual->dado.y == maca->y) {
           visivel = false;
           break; // já sabemos que colidiu; não precisa checar o resto da cauda
         }
+        atual = atual->proximo;
       }
     } while (visivel == false);
   }
@@ -78,10 +137,12 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
   }
 
   // verifica se a cobra bateu no proprio corpo
-  for (int k = 0; k < cobra->tamanho; k++) {
-    if (cobra->x == cobra->cauda[k].x && cobra->y == cobra->cauda[k].y) {
+  atual = cobra->cauda->inicio;
+  while (atual != NULL) {
+    if (cobra->x == atual->dado.x && cobra->y == atual->dado.y) {
       *estado = MENU;
     }
+    atual = atual->proximo;
   }
 
   if (cobra->tamanho == 483) {
@@ -102,11 +163,13 @@ void preencherMapa(Cabeca *cobra, Maca *maca, int **mapa) {
         mapa[y][x] = 3;
       }
 
-      for (int k = 0; k < cobra->tamanho; k++) {
-        if (y == cobra->cauda[k].y && x == cobra->cauda[k].x) {
+      struct No *atual = cobra->cauda->inicio;
+      while (atual != NULL) {
+        if (y == atual->dado.y && x == atual->dado.x) {
           mapa[y][x] = 2;
           break;
         }
+        atual = atual->proximo;
       }
 
       if (y == cobra->y && x == cobra->x) {

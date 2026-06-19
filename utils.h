@@ -1,5 +1,3 @@
-
-
 #ifndef UTILS_H
 #define UTILS_H
 
@@ -22,13 +20,24 @@ typedef struct Corpo {
   int y;
 } Corpo;
 
+struct No {
+  Corpo dado;
+  struct No *proximo;
+  struct No *anterior;
+};
+
+typedef struct Lista {
+  struct No *inicio;
+  struct No *fim;
+} Lista;
+
 // Struct que controla a cabeça, pontuação e o ponteiro para o corpo
 typedef struct Cabeca {
   int x;
   int y;
   int pontuacao;
   int tamanho;
-  Corpo *cauda;
+  Lista *cauda;
 } Cabeca;
 
 // Struct para a posição e valor de pontos da maçã

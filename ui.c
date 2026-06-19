@@ -43,11 +43,7 @@ void desenhar_scoreboard(int *board, ALLEGRO_FONT *font) {
 
 // Zera uma pontuação específica dentro do vetor do placar (Highscores)
 void apagar_pontuacao(int p, int *board) {
-  for (int i = 0; i < 6; i++) {
-    if (i == p) {
-      board[i] = 0;
-    }
-  }
+  board[p] = 0;
   ordenar_pontuacao(0, board);
   salvar_pontuacao(board);
 }

@@ -10,5 +10,7 @@
 void inicializar(Cabeca *cobra, Maca *maca, Direcao *dir);
 void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir);
 void preencherMapa(Cabeca *cobra, Maca *maca, int **mapa);
+void inserir_final(Cabeca *cobra);
+void liberar_lista(Cabeca *cobra);
 
 #endif
