@@ -20,12 +20,13 @@ typedef struct Corpo {
   int y;
 } Corpo;
 
+// struct para no de uma pilha em lista
 struct No {
   Corpo dado;
-  struct No *proximo;
   struct No *anterior;
 };
 
+// struct com inicio e fim da lista
 typedef struct Lista {
   struct No *inicio;
   struct No *fim;
