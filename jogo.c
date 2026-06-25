@@ -144,7 +144,7 @@ void logica(Cabeca *cobra, Maca *maca, Estado *estado, Direcao *dir) {
     atual = atual->anterior;
   }
 
-  if (cobra->tamanho == 483) {
+  if (cobra->tamanho => 480) {
     *estado = MENU;
   }
 }
